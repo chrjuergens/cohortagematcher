@@ -41,29 +41,13 @@ def main(path_to_csv_file: str):
             print(f"Patienten, Anzahl: {len(U_patients)}")#\n{patienten}")
             print(f"Kontrollen, Anzahl: {len(V_controls)}")#\n{kontrolle}")
 
-            edges = create_edges_from_UV(pot_key, U_patients, V_controls)
+            edges = create_edges_from_UV(U_patients, V_controls, pot_key=pot_key)
 
-            G = nx.Graph()
-
-            G.add_weighted_edges_from(edges)
-
-            #print(f"Nodes: {G.nodes}")
-            #for u, v in G.edges:
-            #    print(f"Edge {u} --> {v}: weight: {G.get_edge_data(u, v)}")
-            #print(f"Inserted edges {len(edges)}:")
-
-            edges_subset = nx.min_weight_matching(G)
+            G, edges_subset = compute_age_matching(edges)
             #print(f"Maximal weighted matching (#edges: {len(edges_subset)}):")
             #print(sorted(edges_subset))
 
-            print(f"Edges with weights for maximal weighted matching:")
-            gesamt_gewicht = 0.0
-            result = "patient;kontrolle;altersabstand\n"
-            for u, v in edges_subset:
-                edge_weight = math.ceil((int(G.get_edge_data(u, v)['weight']))**(1/pot_key))
-                gesamt_gewicht += edge_weight
-                print(f"Edge {u} --> {v}: {edge_weight}")
-                result += f"{u};{v};{edge_weight}\n"
+            gesamt_gewicht, result = create_result_representation(G, edges_subset, pot_key)
 
             filename = sex + "_" + pot_val + "_" + str(int(gesamt_gewicht))
             with open(os.path.join(results_dir, filename), 'w') as outfile_wrt_sex:
@@ -96,14 +80,40 @@ def main(path_to_csv_file: str):
             plt.draw()
             plt.savefig("test")
 
-def create_edges_from_UV(pot_key, patients, controls):
-    return [(pat[2], kon[2], pow(age_difference(pat[0], kon[0]), pot_key)) for pat, kon in itertools.product(patients, controls)]
+def create_result_representation(G, edges_subset, pot_key, print: bool = False):
+    if print:
+        print(f"Edges with weights for maximal weighted matching:")
+    gesamt_gewicht = 0.0
+    result = "patient;kontrolle;altersabstand\n"
+    for u, v in edges_subset:
+        edge_weight = math.ceil((int(G.get_edge_data(u, v)['weight']))**(1/pot_key))
+        gesamt_gewicht += edge_weight
+        if print:
+            print(f"Edge {u} --> {v}: {edge_weight}")
+        result += f"{u};{v};{edge_weight}\n"
+    return gesamt_gewicht, result
+
+def compute_age_matching(edges):
+    G = nx.Graph()
+    G.add_weighted_edges_from(edges)
+    #print(f"Nodes: {G.nodes}")
+    #for u, v in G.edges:
+    #    print(f"Edge {u} --> {v}: weight: {G.get_edge_data(u, v)}")
+    #print(f"Inserted edges {len(edges)}:")
+    edges_subset = nx.min_weight_matching(G)
+    return G,edges_subset
+
+def create_edges_from_UV(patients, controls, pot_key: int = 1, age_pos: int = 0):
+    """Create weighted edge set where e x w = (u, v) x w_uv for all u in U, v in V"""
+    return [(pat[2], kon[2], pow(age_difference(pat[age_pos], kon[age_pos]), pot_key)) for pat, kon in itertools.product(patients, controls)]
 
 def age_difference(pat, kon):
+    """Compute age difference"""
     return abs(int(pat)-int(kon))
 
-def filter_by_sex(sex, patients):
-    return [pat for pat in patients if pat[1] == sex]
+def filter_by_sex(sex, patients, pos_sex: int = 1):
+    """Filter list by sex"""
+    return [pat for pat in patients if pat[pos_sex] == sex]
 
 def extract_sets_UV_from_csv(csv_file_path: str, U_name: str = None, V_name: str = None, has_header: bool = True) -> tuple[list, list, list]:
     """Method to extract U and V from a csv where each row corresponds to U or V.
