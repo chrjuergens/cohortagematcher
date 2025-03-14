@@ -19,7 +19,7 @@ The goal is to find a matching between patients and controls so that the sum of 
 
 The package [networkx](https://networkx.org/) provides a [max_weight_matching](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.matching.max_weight_matching.html#max-weight-matching) ([min_weight_matching](https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.matching.min_weight_matching.html#min-weight-matching) respectively) method that computes a maximum-weighted matching (minimum-weighted matchin respectively) of a graph G.
 
-Currently the age difference is defined as the absolute value of the difference of $P_i$'s age and $K_j$'s age:
+Currently the age difference is defined as the absolute value of the difference of the ages of $P_i$ and $K_j$:
 
 $$
 d_{ij} = abs(age(P_i)-age(K_j))
@@ -29,11 +29,11 @@ $$
 In case of **minimum-weighted matching** one can use the weights
 
 $$
-w_{ij} = d_{ij}^k
+w_{ij} = d_{ij}^s
 $$
 
-where $k$ is an integer.
-With $k>1$ edges with bigger $d_{ij}$ get a bigger weight $w_{ij}$ assigned.
+where $s$ is an integer.
+With $s>1$ edges with bigger $d_{ij}$ get a bigger weight $w_{ij}$ assigned.
 The minimum-weighted matching algorithm will try to avoid these edges.
-Hence, $k>1$ can be seen as outlier prevention as the weights of all edges in the resulting matching will have comparable weights.
+Hence, $s>1$ can be seen as outlier prevention as the weights of all edges in the resulting matching will have comparable weights.
 
