@@ -6,15 +6,7 @@ import os
 import matplotlib.pyplot as plt
 import networkx as nx
 
-def main():
-    csv_file_path = "Zuordnung_math.csv"
-
-    if os.path.exists(csv_file_path):
-        print("csv exists ...")
-    else:
-        print(f"Could not find csv file: {csv_file_path}")
-        print("Abort!")
-        exit(0)
+def main(path_to_csv_file: str):
 
     sexes = ['m', 'w', 'all']
 
@@ -39,30 +31,17 @@ def main():
             print(f"Geschlecht: {sex}\n")
             print(f"Kantenpotenz (der Altersabstände): {pot_key}, also {pot_val}\n")
             
-            patients = []
-            controls = []
-            
-            # Extract patienten, kontrollen
-            with open(csv_file_path, "r") as csv_file:
-                csv_reader = csv.reader(csv_file, delimiter=';')
-                header = next(csv_reader)
-    #                print(f"Header: {header}")
-
-                for line in csv_reader:
-                    if line[0].startswith("Kontrolle"):
-                        controls.append(line[1:])
-                    else:
-                        patients.append(line[1:])
+            U_patients, V_controls, header = extract_sets_UV_from_csv(csv_file_path=path_to_csv_file, has_header=True, U_name="Kontrolle")
             
             # Filter gender
             if sex != 'all':
-                patients = [pat for pat in patients if pat[1] == sex]
-                controls = [kon for kon in controls if kon[1] == sex]
+                U_patients = filter_by_sex(sex, U_patients)
+                V_controls = filter_by_sex(sex, V_controls)
 
-            print(f"Patienten, Anzahl: {len(patients)}")#\n{patienten}")
-            print(f"Kontrollen, Anzahl: {len(controls)}")#\n{kontrolle}")
+            print(f"Patienten, Anzahl: {len(U_patients)}")#\n{patienten}")
+            print(f"Kontrollen, Anzahl: {len(V_controls)}")#\n{kontrolle}")
 
-            edges = [(pat[2], kon[2], pow(abs(int(pat[0])-int(kon[0])), pot_key)) for pat, kon in itertools.product(patients, controls)]
+            edges = create_edges_from_UV(pot_key, U_patients, V_controls)
 
             G = nx.Graph()
 
@@ -72,7 +51,6 @@ def main():
             #for u, v in G.edges:
             #    print(f"Edge {u} --> {v}: weight: {G.get_edge_data(u, v)}")
             #print(f"Inserted edges {len(edges)}:")
-
 
             edges_subset = nx.min_weight_matching(G)
             #print(f"Maximal weighted matching (#edges: {len(edges_subset)}):")
@@ -95,8 +73,8 @@ def main():
             print(f"Anzahl Kanten: {len(edges_subset)}")
             R = nx.Graph()
 
-            pat_nodes = [pat[2] for pat in patients]
-            kon_nodes = [kon[2] for kon in controls]
+            pat_nodes = [pat[2] for pat in U_patients]
+            kon_nodes = [kon[2] for kon in V_controls]
             R.add_nodes_from(pat_nodes, bipartite=0)
             R.add_nodes_from(kon_nodes, bipartite=1)
             R.add_edges_from(edges_subset)
@@ -118,15 +96,63 @@ def main():
             plt.draw()
             plt.savefig("test")
 
-            #layout = nx.layout.bipartite_layout(R, nodes=pat_nodes)
+def create_edges_from_UV(pot_key, patients, controls):
+    return [(pat[2], kon[2], pow(age_difference(pat[0], kon[0]), pot_key)) for pat, kon in itertools.product(patients, controls)]
+
+def age_difference(pat, kon):
+    return abs(int(pat)-int(kon))
+
+def filter_by_sex(sex, patients):
+    return [pat for pat in patients if pat[1] == sex]
+
+def extract_sets_UV_from_csv(csv_file_path: str, U_name: str = None, V_name: str = None, has_header: bool = True) -> tuple[list, list, list]:
+    """Method to extract U and V from a csv where each row corresponds to U or V.
+
+    The csv must be structured as follows:
+    - Each row corresponds to U or V
+    - The decision is made on basis of the first element
+    - You must name U_name which is the filter for U
+    - You don't have to name V_name but if you do then only U_name and V_name are filtered
+    """
+    if U_name is None and V_name is None:
+        raise ValueError("You must specify U_name or V_name")
+    U = []
+    V = []
+    with open(csv_file_path, "r") as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=';')
+        if has_header:
+            header = next(csv_reader)
+        for line in csv_reader:
+            if U_name is not None:
+                if line[0].startswith(U_name):
+                    U.append(line[1:])
+                else:
+                    V.append(line[1:])
+            elif V_name is not None:
+                if line[0].startswith(V_name):
+                    V.append(line[1:])
+                else:
+                    U.append(line[1:])
+        if has_header:
+            return U, V, header
+        else:
+            return U, V, []
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser
-
-    parser.add_argument("file", type=str, help="path to csv file")
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--file", type=str, help="path to csv file")
+    parser.add_argument("-U", "--U-name", type=str, help="Name of U elements")
+    parser.add_argument("-V", "--V-name", type=str, help="Name of V elements")
     args = parser.parse_args()
 
+    csv_file_path = args.file
 
+    if os.path.exists(csv_file_path):
+        print("csv exists ...")
+    else:
+        print(f"Could not find csv file: {csv_file_path}")
+        print("Abort!")
+        exit(0)
     
-    main()
+    main(path_to_csv_file=args.file)
