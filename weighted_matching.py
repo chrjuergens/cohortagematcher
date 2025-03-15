@@ -5,7 +5,7 @@ import itertools
 import math
 import os
 import sys
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import networkx as nx
 
 def main(path_to_csv_file: str):
@@ -49,41 +49,41 @@ def main(path_to_csv_file: str):
                 outfile_wrt_sex.write(result)              
             print(f"Gesamtgewicht: {gesamt_gewicht}")
             print(f"Anzahl Kanten: {len(edges_subset)}")
-            r = nx.Graph()
-            pat_nodes = [pat[2] for pat in u_patients]
-            kon_nodes = [kon[2] for kon in v_controls]
-            r.add_nodes_from(pat_nodes, bipartite=0)
-            r.add_nodes_from(kon_nodes, bipartite=1)
-            r.add_edges_from(edges_subset)
+            # g = nx.Graph()
+            # pat_nodes = [pat[2] for pat in u_patients]
+            # kon_nodes = [kon[2] for kon in v_controls]
+            # g.add_nodes_from(pat_nodes, bipartite=0)
+            # g.add_nodes_from(kon_nodes, bipartite=1)
+            # g.add_edges_from(edges_subset)
 
-            l, r = nx.bipartite.sets(r, pat_nodes)
+            # l, r = nx.bipartite.sets(g, pat_nodes)
 
-            option = 1
-            pos = {}
-            if option == 1:
-                # OPTION 1: working
-                pos.update((node, (1, 10*index)) for index, node in enumerate(l))
-                pos.update((node, (2, 10*index)) for index, node in enumerate(r))
+            # option = 1
+            # pos = {}
+            # if option == 1:
+            #     # OPTION 1: working
+            #     pos.update((node, (1, 10*index)) for index, node in enumerate(l))
+            #     pos.update((node, (2, 10*index)) for index, node in enumerate(r))
 
-            if option == 2:
-                # OPTION 2: not working
-                pos = nx.layout.bipartite_layout(r, nodes=pat_nodes, aspect_ratio=0.5, scale=20.0)
+            # if option == 2:
+            #     # OPTION 2: not working
+            #     pos = nx.layout.bipartite_layout(r, nodes=pat_nodes, aspect_ratio=0.5, scale=20.0)
 
-            nx.draw(r, pos=pos, with_labels=True)
-            plt.draw()
-            plt.savefig("test")
+            # nx.draw(r, pos=pos, with_labels=True)
+            # plt.draw()
+            # plt.savefig("test")
 
-def create_result_representation(g, edges_subset, pot_key, do_print: bool = False):
+def create_result_representation(g, edges_subset, pot_key, do_print: bool = True):
     """Creates result representation string containing the age-matched cohort"""
     if do_print:
-        do_print("Edges with weights for maximal weighted matching:")
+        print("Edges with weights for maximal weighted matching:")
     gesamt_gewicht = 0.0
     result = "patient;kontrolle;altersabstand\n"
     for u, v in edges_subset:
         edge_weight = math.ceil((int(g.get_edge_data(u, v)['weight']))**(1/pot_key))
         gesamt_gewicht += edge_weight
         if do_print:
-            do_print(f"Edge {u} --> {v}: {edge_weight}")
+            print(f"Edge {u} --> {v}: {edge_weight}")
         result += f"{u};{v};{edge_weight}\n"
     return gesamt_gewicht, result
 
