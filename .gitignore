@@ -2,3 +2,5 @@ results/*
 *.png
 *.csv
 *.xlsx
+docs/*
+big_k_*
