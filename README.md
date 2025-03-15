@@ -1,3 +1,5 @@
+[![Pylint](https://github.com/chrjuergens/cohortagematcher/actions/workflows/pylint.yml/badge.svg)](https://github.com/chrjuergens/cohortagematcher/actions/workflows/pylint.yml)
+
 # Cohort Age Matching
 
 This repository provides a python package that computes an age-optimized matching between entities of two disjoint groups.
