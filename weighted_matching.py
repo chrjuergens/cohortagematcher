@@ -1,12 +1,15 @@
+"""Module for cohort age matching"""
 import argparse
 import csv
 import itertools
 import math
 import os
+import sys
 import matplotlib.pyplot as plt
 import networkx as nx
 
 def main(path_to_csv_file: str):
+    """Computes chort age matching"""
 
     sexes = ['m', 'w', 'all']
 
@@ -27,43 +30,33 @@ def main(path_to_csv_file: str):
         print("########################################################")
         for pot_key, pot_val in potenzen.items():
             print("-------------------------------------------------------")
-            
             print(f"Geschlecht: {sex}\n")
             print(f"Kantenpotenz (der Altersabstände): {pot_key}, also {pot_val}\n")
-            
-            U_patients, V_controls, header = extract_sets_UV_from_csv(csv_file_path=path_to_csv_file, has_header=True, U_name="Kontrolle")
-            
+            u_patients, v_controls, header = extract_sets_uv_from_csv(csv_file_path=path_to_csv_file, has_header=True, u_name="Kontrolle")
             # Filter gender
             if sex != 'all':
-                U_patients = filter_by_sex(sex, U_patients)
-                V_controls = filter_by_sex(sex, V_controls)
-
-            print(f"Patienten, Anzahl: {len(U_patients)}")#\n{patienten}")
-            print(f"Kontrollen, Anzahl: {len(V_controls)}")#\n{kontrolle}")
-
-            edges = create_edges_from_UV(U_patients, V_controls, pot_key=pot_key)
-
-            G, edges_subset = compute_age_matching(edges)
+                u_patients = filter_by_sex(sex, u_patients)
+                v_controls = filter_by_sex(sex, v_controls)
+            print(f"Patienten, Anzahl: {len(u_patients)}")#\n{patienten}")
+            print(f"Kontrollen, Anzahl: {len(v_controls)}")#\n{kontrolle}")
+            edges = create_edges_from_uv(u_patients, v_controls, pot_key=pot_key)
+            g, edges_subset = compute_age_matching(edges)
             #print(f"Maximal weighted matching (#edges: {len(edges_subset)}):")
             #print(sorted(edges_subset))
-
-            gesamt_gewicht, result = create_result_representation(G, edges_subset, pot_key)
-
+            gesamt_gewicht, result = create_result_representation(g, edges_subset, pot_key)
             filename = sex + "_" + pot_val + "_" + str(int(gesamt_gewicht))
-            with open(os.path.join(results_dir, filename), 'w') as outfile_wrt_sex:
+            with open(os.path.join(results_dir, filename), 'w', encoding='utf8') as outfile_wrt_sex:
                 outfile_wrt_sex.write(result)              
-
             print(f"Gesamtgewicht: {gesamt_gewicht}")
             print(f"Anzahl Kanten: {len(edges_subset)}")
-            R = nx.Graph()
+            r = nx.Graph()
+            pat_nodes = [pat[2] for pat in u_patients]
+            kon_nodes = [kon[2] for kon in v_controls]
+            r.add_nodes_from(pat_nodes, bipartite=0)
+            r.add_nodes_from(kon_nodes, bipartite=1)
+            r.add_edges_from(edges_subset)
 
-            pat_nodes = [pat[2] for pat in U_patients]
-            kon_nodes = [kon[2] for kon in V_controls]
-            R.add_nodes_from(pat_nodes, bipartite=0)
-            R.add_nodes_from(kon_nodes, bipartite=1)
-            R.add_edges_from(edges_subset)
-
-            l, r = nx.bipartite.sets(R, pat_nodes)
+            l, r = nx.bipartite.sets(r, pat_nodes)
 
             option = 1
             pos = {}
@@ -74,36 +67,39 @@ def main(path_to_csv_file: str):
 
             if option == 2:
                 # OPTION 2: not working
-                pos = nx.layout.bipartite_layout(R, nodes=pat_nodes, aspect_ratio=0.5, scale=20.0)
+                pos = nx.layout.bipartite_layout(r, nodes=pat_nodes, aspect_ratio=0.5, scale=20.0)
 
-            nx.draw(R, pos=pos, with_labels=True)
+            nx.draw(r, pos=pos, with_labels=True)
             plt.draw()
             plt.savefig("test")
 
-def create_result_representation(G, edges_subset, pot_key, print: bool = False):
-    if print:
-        print(f"Edges with weights for maximal weighted matching:")
+def create_result_representation(g, edges_subset, pot_key, do_print: bool = False):
+    """Creates result representation string containing the age-matched cohort"""
+    if do_print:
+        do_print("Edges with weights for maximal weighted matching:")
     gesamt_gewicht = 0.0
     result = "patient;kontrolle;altersabstand\n"
     for u, v in edges_subset:
-        edge_weight = math.ceil((int(G.get_edge_data(u, v)['weight']))**(1/pot_key))
+        edge_weight = math.ceil((int(g.get_edge_data(u, v)['weight']))**(1/pot_key))
         gesamt_gewicht += edge_weight
-        if print:
-            print(f"Edge {u} --> {v}: {edge_weight}")
+        if do_print:
+            do_print(f"Edge {u} --> {v}: {edge_weight}")
         result += f"{u};{v};{edge_weight}\n"
     return gesamt_gewicht, result
 
 def compute_age_matching(edges):
-    G = nx.Graph()
-    G.add_weighted_edges_from(edges)
+    """Creates graph and computes min_weight_matching"""
+    g = nx.Graph()
+    g.add_weighted_edges_from(edges)
     #print(f"Nodes: {G.nodes}")
     #for u, v in G.edges:
     #    print(f"Edge {u} --> {v}: weight: {G.get_edge_data(u, v)}")
     #print(f"Inserted edges {len(edges)}:")
-    edges_subset = nx.min_weight_matching(G)
-    return G,edges_subset
+    edges_subset = nx.min_weight_matching(g)
+    return g,edges_subset
 
-def create_edges_from_UV(patients, controls, pot_key: int = 1, age_pos: int = 0):
+def create_edges_from_uv(patients, controls,
+                         pot_key: int = 1, age_pos: int = 0):
     """Create weighted edge set where e x w = (u, v) x w_uv for all u in U, v in V"""
     return [(pat[2], kon[2], pow(age_difference(pat[age_pos], kon[age_pos]), pot_key)) for pat, kon in itertools.product(patients, controls)]
 
@@ -115,7 +111,8 @@ def filter_by_sex(sex, patients, pos_sex: int = 1):
     """Filter list by sex"""
     return [pat for pat in patients if pat[pos_sex] == sex]
 
-def extract_sets_UV_from_csv(csv_file_path: str, U_name: str = None, V_name: str = None, has_header: bool = True) -> tuple[list, list, list]:
+def extract_sets_uv_from_csv(csv_file_path: str, u_name: str = None, v_name: str = None,
+                             has_header: bool = True) -> tuple[list, list, list]:
     """Method to extract U and V from a csv where each row corresponds to U or V.
 
     The csv must be structured as follows:
@@ -124,29 +121,28 @@ def extract_sets_UV_from_csv(csv_file_path: str, U_name: str = None, V_name: str
     - You must name U_name which is the filter for U
     - You don't have to name V_name but if you do then only U_name and V_name are filtered
     """
-    if U_name is None and V_name is None:
+    if u_name is None and v_name is None:
         raise ValueError("You must specify U_name or V_name")
-    U = []
-    V = []
-    with open(csv_file_path, "r") as csv_file:
+    u = []
+    v = []
+    with open(csv_file_path, "r", encoding='utf8') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=';')
         if has_header:
             header = next(csv_reader)
         for line in csv_reader:
-            if U_name is not None:
-                if line[0].startswith(U_name):
-                    U.append(line[1:])
+            if u_name is not None:
+                if line[0].startswith(u_name):
+                    u.append(line[1:])
                 else:
-                    V.append(line[1:])
-            elif V_name is not None:
-                if line[0].startswith(V_name):
-                    V.append(line[1:])
+                    v.append(line[1:])
+            elif v_name is not None:
+                if line[0].startswith(v_name):
+                    v.append(line[1:])
                 else:
-                    U.append(line[1:])
+                    u.append(line[1:])
         if has_header:
-            return U, V, header
-        else:
-            return U, V, []
+            return u, v, header
+        return u, v, []
 
 
 if __name__ == '__main__':
@@ -163,6 +159,5 @@ if __name__ == '__main__':
     else:
         print(f"Could not find csv file: {csv_file_path}")
         print("Abort!")
-        exit(0)
-    
+        sys.exit(0)
     main(path_to_csv_file=args.file)
