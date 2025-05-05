@@ -8,19 +8,20 @@ import sys
 # import matplotlib.pyplot as plt
 import networkx as nx
 
+sexes = ['m', 'w', 'all']
+exponents = {
+    1: 'linear',
+    2: 'quadratisch',
+    3: 'kubisch'
+}
 
-def main(csv_path: str, results_dir: str):
+def main(csv_path: str, directory: str):
     """Computes chort age matching"""
-    SEXES = ['m', 'w', 'all']
-    POTENZEN = {
-        1: 'linear',
-        2: 'quadratisch',
-        3: 'kubisch'
-    }
 
-    for sex in SEXES:
+
+    for sex in sexes:
         print("########################################################")
-        for pot_key, pot_val in POTENZEN.items():
+        for pot_key, pot_val in exponents.items():
             print("-------------------------------------------------------")
             print(f"Geschlecht: {sex}\n")
             print(
@@ -45,7 +46,7 @@ def main(csv_path: str, results_dir: str):
                                                                   header=header,
                                                                   do_print=True)
             filename = sex + "_" + pot_val + "_" + str(int(gesamt_gewicht))
-            with open(os.path.join(results_dir, filename), 'w', encoding='utf8') as outfile_wrt_sex:
+            with open(os.path.join(directory, filename), 'w', encoding='utf8') as outfile_wrt_sex:
                 outfile_wrt_sex.write(result)
             print(f"Gesamtgewicht: {gesamt_gewicht}")
             print(f"Anzahl Kanten: {len(edges_subset)}")
@@ -167,7 +168,8 @@ if __name__ == '__main__':
     parser.add_argument("-f", "--file", type=str, help="path to csv file")
     parser.add_argument("-U", "--U-name", type=str, help="Name of U elements")
     parser.add_argument("-V", "--V-name", type=str, help="Name of V elements")
-    parser.add_argument("-r", "--results-dir", type=str, help="Directory for results")
+    parser.add_argument("-r", "--results-dir", type=str, help="Directory for results",
+                        default="big_k_min")
     args = parser.parse_args()
 
     csv_file_path = args.file
@@ -178,7 +180,7 @@ if __name__ == '__main__':
         print(f"Could not find csv file: {csv_file_path}")
         print("Abort!")
         sys.exit(0)
-    results_dir = "big_k_min"
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
-    main(csv_path=args.file, results_dir=results_dir)
+    output_dir = args.results_dir
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    main(csv_path=args.file, directory=output_dir)
